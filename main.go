@@ -12,7 +12,9 @@ import (
 )
 
 var (
-	timeout = flag.Int("timeout", 60, "the time that the script will be re-ran, in minutes")
+	timeout         = flag.Int("t", 60, "the time (in minutes) that the script will be re-ran")
+	timeoutStrategy = flag.String("tstr", "ms", "the timeout strategy (unit). accepted values are \"ms\", \"s\", and \"m\".")
+	msg             = flag.String("msg", "automated commit by autopush", "the commit message to supply when an automatic commit is made")
 
 	green = color.New(color.FgGreen).SprintFunc()
 	red   = color.New(color.FgRed).SprintFunc()
@@ -21,20 +23,12 @@ var (
 func main() {
 	flag.Parse()
 
-	fmt.Println("             _                        _")
-	fmt.Println("            | |                      | |")
-	fmt.Println("  __ _ _   _| |_ ___  _ __  _   _ ___| |__")
-	fmt.Println(" / _` | | | | __/ _ \\| '_ \\| | | / __| '_ \\")
-	fmt.Println("| (_| | |_| | || (_) | |_) | |_| \\__ \\ | | |")
-	fmt.Println(" \\__,_|\\__,_|\\__\\___/| .__/ \\__,_|___/_| |_|")
-	fmt.Println("                     | |")
-	fmt.Println("                     |_|")
-	fmt.Println()
-
+	printAsciiArt()
 	fmt.Println("autopush v1.0 created by github.com/villaleo")
+
 	for {
 		stage()
-		if commit("automated commit by autopush") {
+		if commit(*msg) {
 			push()
 			slog.Info(green("changes pushed"))
 		} else {
@@ -94,7 +88,36 @@ func push() {
 	}
 }
 
-// sleep suspends the goroutine for timeout minutes.
+// sleep suspends the goroutine for timeout using timeoutStrategy units.
 func sleep() {
-	time.Sleep(time.Duration(*timeout) * time.Minute)
+	duration := time.Minute
+
+	if timeoutStrategy == nil {
+		time.Sleep(time.Duration(*timeout) * duration)
+		return
+	}
+
+	switch *timeoutStrategy {
+	case "ms":
+		duration = time.Millisecond
+	case "s":
+		duration = time.Second
+	case "m":
+		duration = time.Minute
+	}
+
+	time.Sleep(time.Duration(*timeout) * duration)
+}
+
+// printAsciiArt prints ASCII art reading "autopush" to stdout.
+func printAsciiArt() {
+	fmt.Println("             _                        _")
+	fmt.Println("            | |                      | |")
+	fmt.Println("  __ _ _   _| |_ ___  _ __  _   _ ___| |__")
+	fmt.Println(" / _` | | | | __/ _ \\| '_ \\| | | / __| '_ \\")
+	fmt.Println("| (_| | |_| | || (_) | |_) | |_| \\__ \\ | | |")
+	fmt.Println(" \\__,_|\\__,_|\\__\\___/| .__/ \\__,_|___/_| |_|")
+	fmt.Println("                     | |")
+	fmt.Println("                     |_|")
+	fmt.Println()
 }
