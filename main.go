@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bufio"
+	"context"
 	"flag"
 	"fmt"
 	"log/slog"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -17,7 +20,7 @@ var (
 		"specify a timeout strategy.")
 	timeoutStrategy = flag.String("tstr", "ms", "the timeout strategy (unit). "+
 		"accepted values are \"ms\", \"s\", and \"m\".")
-	msg = flag.String("msg", "automated commit by autopush", "the commit "+
+	commitMsg = flag.String("msg", "automated commit by autopush", "the commit "+
 		"message to supply when an automatic commit is made")
 
 	green = color.New(color.FgGreen).SprintFunc()
@@ -28,21 +31,19 @@ func main() {
 	flag.Parse()
 
 	printAsciiArt()
-	fmt.Println("autopush v1.0 created by github.com/villaleo")
-
 	for {
-		stage()
-		if commit(*msg) {
-			push()
-			slog.Info(green("changes pushed"))
+		stageWorkingDir()
+		if willCommitChanges() {
+			promptForCustomCommitMsg()
+			pushCommittedChanges()
 		} else {
 			sleep()
 		}
 	}
 }
 
-// stage stages all the files in the working directory using git add -A.
-func stage() {
+// stageWorkingDir stages all the files in the working directory using git add -A.
+func stageWorkingDir() {
 	cmd := exec.Command("git", "add", "-A")
 	if out, err := cmd.Output(); err != nil {
 		slog.Error(red("failed to stage files"))
@@ -54,10 +55,45 @@ func stage() {
 	}
 }
 
-// commit commits the staging area in the working directory using git commit
+// promptForCustomCommitMsg prompts the user to enter a custom commit message.
+// If no message is entered after a minute, the default commit message is used
+// instead.
+func promptForCustomCommitMsg() {
+	slog.Info(green("changes detected"))
+
+	customMsg := make(chan string, 1)
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second))
+	defer cancel()
+
+	go func() {
+		fmt.Println("enter a commit message: ")
+
+		reader := bufio.NewReader(os.Stdin)
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			slog.Error(red(err))
+			return
+		}
+
+		select {
+		case customMsg <- line:
+		case <-ctx.Done():
+		}
+	}()
+
+	select {
+	case msg := <-customMsg:
+		*commitMsg = msg
+	case <-ctx.Done():
+		slog.Info("no message provided.")
+		slog.Info(fmt.Sprintf("falling back to default: %q", *commitMsg))
+	}
+}
+
+// willCommitChanges commits the staging area in the working directory using git commit
 // -m msg. Returns true if a commit was made.
-func commit(msg string) bool {
-	cmd := exec.Command("git", "commit", "-m", msg)
+func willCommitChanges() bool {
+	cmd := exec.Command("git", "commit", "-m", *commitMsg)
 	out, err := cmd.Output()
 	res := string(out)
 	if strings.Contains(res, "up to date") || strings.Contains(res, "nothing to commit") {
@@ -67,7 +103,7 @@ func commit(msg string) bool {
 
 	if err != nil {
 		slog.Error(red("failed to commit changes"))
-		if msg != "" {
+		if res != "" {
 			slog.Error(red(res))
 		}
 		sleep()
@@ -76,8 +112,8 @@ func commit(msg string) bool {
 	return true
 }
 
-// push pushes the changes in the working directory using git push.
-func push() {
+// pushCommittedChanges pushes the changes in the working directory using git push.
+func pushCommittedChanges() {
 	cmd := exec.Command("git", "push")
 	out, err := cmd.Output()
 	if err != nil {
@@ -90,6 +126,8 @@ func push() {
 
 		return
 	}
+
+	slog.Info(green("changes pushed"))
 }
 
 // sleep suspends the goroutine for timeout using timeoutStrategy units.
@@ -124,4 +162,5 @@ func printAsciiArt() {
 	fmt.Println("                     | |")
 	fmt.Println("                     |_|")
 	fmt.Println()
+	fmt.Println("autopush v1.0 created by github.com/villaleo")
 }
