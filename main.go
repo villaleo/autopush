@@ -96,7 +96,7 @@ func stageWorkingDir() (ok bool) {
 // Returns false if an error occurred. Errors are printed to Stdout.
 func promptForCustomCommitMsg() (ok bool) {
 	customMsg := make(chan string, 1)
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(1*time.Minute))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(5*time.Minute))
 	defer cancel()
 
 	go func() {
