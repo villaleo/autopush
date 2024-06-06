@@ -7,3 +7,5 @@
 # Vim
 *.swp
 
+# Binaries
+bin/*
