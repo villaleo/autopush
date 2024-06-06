@@ -12,12 +12,12 @@ import (
 )
 
 var (
-	timeout = flag.Int("t", 60, "the timeout until the the script is"+
-		"re-ran. \"m\" is the default timeout strategy. use \"tstr\" to"+
+	timeout = flag.Int("t", 60, "the timeout until the the script is "+
+		"re-ran. \"m\" is the default timeout strategy. use \"tstr\" to "+
 		"specify a timeout strategy.")
-	timeoutStrategy = flag.String("tstr", "ms", "the timeout strategy (unit)."+
+	timeoutStrategy = flag.String("tstr", "ms", "the timeout strategy (unit). "+
 		"accepted values are \"ms\", \"s\", and \"m\".")
-	msg = flag.String("msg", "automated commit by autopush", "the commit"+
+	msg = flag.String("msg", "automated commit by autopush", "the commit "+
 		"message to supply when an automatic commit is made")
 
 	green = color.New(color.FgGreen).SprintFunc()
