@@ -32,44 +32,69 @@ func main() {
 
 	printAsciiArt()
 	for {
-		isWorkingDirClean()
+		if !isWorkingDirClean() {
+			if ok := stageWorkingDir(); !ok {
+				sleep()
+				continue
+			}
+			if ok := promptForCustomCommitMsg(); !ok {
+				sleep()
+				continue
+			}
+			if ok := commitStagedChanges(); !ok {
+				sleep()
+				continue
+			}
+			if ok := pushCommittedChanges(); !ok {
+				sleep()
+				continue
+			}
+		}
 		sleep()
-		// stageWorkingDir()
-		// commitStagedChanges()
-		// promptForCustomCommitMsg()
-		// pushCommittedChanges()
 	}
 }
 
 // isWorkingDirClean checks if the working directory is clean using git status.
-func isWorkingDirClean() {
+// If an error occurrs when checking git status, the directory is assumed to be
+// dirty.
+func isWorkingDirClean() bool {
 	cmd := exec.Command("git", "status")
-	if out, err := cmd.Output(); err != nil {
-		slog.Error(red(err))
-		res := string(out)
-		slog.Error(red(res))
+
+	out, err := cmd.Output()
+	res := string(out)
+	if err != nil {
+		fmt.Println(red(err))
+		fmt.Println(red(res))
+		return false
 	}
+
+	fmt.Println(res)
+	return strings.Contains(res, "nothing to commit, working tree clean")
 }
 
 // stageWorkingDir stages all the files in the working directory using git add -A.
-func stageWorkingDir() {
+// Returns false if an error occurred. Errors are printed to Stdout.
+func stageWorkingDir() (ok bool) {
+	slog.Info("changes detected.")
 	cmd := exec.Command("git", "add", "-A")
-	if out, err := cmd.Output(); err != nil {
-		slog.Error(red("failed to stage files"))
-		if res := string(out); res != "" {
-			slog.Error(red(res))
-		}
 
-		sleep()
+	out, err := cmd.Output()
+	res := string(out)
+	if err != nil {
+		fmt.Println(red(err))
+		fmt.Println(red(res))
+		return false
 	}
+
+	slog.Info(green("all files staged."))
+	return true
 }
 
 // promptForCustomCommitMsg prompts the user to enter a custom commit message.
 // If no message is entered after a minute, the default commit message is used
 // instead.
-func promptForCustomCommitMsg() {
-	slog.Info(green("changes detected"))
-
+// Returns false if an error occurred. Errors are printed to Stdout.
+func promptForCustomCommitMsg() (ok bool) {
 	customMsg := make(chan string, 1)
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(1*time.Minute))
 	defer cancel()
@@ -80,7 +105,7 @@ func promptForCustomCommitMsg() {
 		reader := bufio.NewReader(os.Stdin)
 		line, err := reader.ReadString('\n')
 		if err != nil {
-			slog.Error(red(err))
+			fmt.Println(red(err))
 			return
 		}
 
@@ -88,6 +113,8 @@ func promptForCustomCommitMsg() {
 		case customMsg <- line:
 		case <-ctx.Done():
 		}
+
+		ok = true
 	}()
 
 	select {
@@ -97,44 +124,43 @@ func promptForCustomCommitMsg() {
 		slog.Info("no message provided.")
 		slog.Info(fmt.Sprintf("falling back to default: %q", *commitMsg))
 	}
+
+	return ok
 }
 
 // commitStagedChanges commits the staging area in the working directory using git commit
-// -m commitMsg
-func commitStagedChanges() {
+// -m commitMsg.
+// Returns false if an error occurred. Errors are printed to Stdout.
+func commitStagedChanges() (ok bool) {
 	cmd := exec.Command("git", "commit", "-m", *commitMsg)
+
 	out, err := cmd.Output()
 	res := string(out)
-	if strings.Contains(res, "up to date") || strings.Contains(res, "nothing to commit") {
-		sleep()
-		return
+	if err != nil {
+		fmt.Println(red(err))
+		fmt.Println(red(res))
+		return false
 	}
 
-	if err != nil {
-		slog.Error(red("failed to commit changes"))
-		if res != "" {
-			slog.Error(red(res))
-		}
-		sleep()
-	}
+	slog.Info(green("changes committed."))
+	return true
 }
 
 // pushCommittedChanges pushes the changes in the working directory using git push.
-func pushCommittedChanges() {
+// Returns false if an error occurred. Errors are printed to Stdout.
+func pushCommittedChanges() (ok bool) {
 	cmd := exec.Command("git", "push")
+
 	out, err := cmd.Output()
+	res := string(out)
 	if err != nil {
-		slog.Error(red("failed to push changes"))
-
-		if res := string(out); res != "" {
-			slog.Error(red(res))
-		}
-		sleep()
-
-		return
+		fmt.Println(red(err))
+		fmt.Println(red(res))
+		return false
 	}
 
-	slog.Info(green("changes pushed"))
+	slog.Info(green("changes pushed."))
+	return true
 }
 
 // sleep suspends the goroutine for timeout using timeoutStrategy units.
