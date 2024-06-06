@@ -21,7 +21,7 @@ var (
 	timeoutStrategy = flag.String("tstr", "ms", "the timeout strategy (unit). "+
 		"accepted values are \"ms\", \"s\", and \"m\".")
 	commitMsg = flag.String("msg", "automated commit by autopush", "the commit "+
-		"message to supply when an automatic commit is made")
+		"message to supply when an automatic commit is made.")
 
 	green = color.New(color.FgGreen).SprintFunc()
 	red   = color.New(color.FgRed).SprintFunc()
