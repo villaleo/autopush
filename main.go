@@ -32,13 +32,22 @@ func main() {
 
 	printAsciiArt()
 	for {
-		stageWorkingDir()
-		if willCommitChanges() {
-			promptForCustomCommitMsg()
-			pushCommittedChanges()
-		} else {
-			sleep()
-		}
+		isWorkingDirClean()
+		sleep()
+		// stageWorkingDir()
+		// commitStagedChanges()
+		// promptForCustomCommitMsg()
+		// pushCommittedChanges()
+	}
+}
+
+// isWorkingDirClean checks if the working directory is clean using git status.
+func isWorkingDirClean() {
+	cmd := exec.Command("git", "status")
+	if out, err := cmd.Output(); err != nil {
+		slog.Error(red(err))
+		res := string(out)
+		slog.Error(red(res))
 	}
 }
 
@@ -90,15 +99,15 @@ func promptForCustomCommitMsg() {
 	}
 }
 
-// willCommitChanges commits the staging area in the working directory using git commit
-// -m msg. Returns true if a commit was made.
-func willCommitChanges() bool {
+// commitStagedChanges commits the staging area in the working directory using git commit
+// -m commitMsg
+func commitStagedChanges() {
 	cmd := exec.Command("git", "commit", "-m", *commitMsg)
 	out, err := cmd.Output()
 	res := string(out)
 	if strings.Contains(res, "up to date") || strings.Contains(res, "nothing to commit") {
 		sleep()
-		return false
+		return
 	}
 
 	if err != nil {
@@ -108,8 +117,6 @@ func willCommitChanges() bool {
 		}
 		sleep()
 	}
-
-	return true
 }
 
 // pushCommittedChanges pushes the changes in the working directory using git push.
