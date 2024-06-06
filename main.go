@@ -62,7 +62,7 @@ func promptForCustomCommitMsg() {
 	slog.Info(green("changes detected"))
 
 	customMsg := make(chan string, 1)
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(3*time.Second))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(1*time.Minute))
 	defer cancel()
 
 	go func() {
