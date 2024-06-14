@@ -29,7 +29,7 @@ var (
 
 func main() {
 	flag.Parse()
-
+	fmt.Println()
 	printAsciiArt()
 	for {
 		if !isWorkingDirClean() {
